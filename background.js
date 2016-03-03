@@ -20,9 +20,13 @@ function updateViewCount(url) {
     chrome.storage.sync.get(domainPart, function (val) {
         val[domainPart] = val[domainPart] || 0;
         val[domainPart]++;
-        chrome.storage.sync.set(val, function() {
-            updateBadge(val[domainPart]);
-        });
+        saveCountInStorage(val, domainPart);
+    });
+}
+
+function saveCountInStorage(val, domainPart) {
+    chrome.storage.sync.set(val, function() {
+        updateBadge(val[domainPart]);
     });
 }
 
@@ -37,8 +41,13 @@ chrome.tabs.onActivated.addListener(function(activeInfo) {
     chrome.tabs.get(activeInfo.tabId, function(tab){
         var domainPart = extractDomain(tab.url);
         chrome.storage.sync.get(domainPart, function (val) {
-            val[domainPart] = val[domainPart] || 1;
-            updateBadge(val[domainPart]);
+            if (val[domainPart]) {
+                updateBadge(val[domainPart]);
+            } else {
+                // when plugin is installed and switched to pre-opened tab.
+                val[domainPart] = 1;
+                saveCountInStorage(val, domainPart);
+            }
         });
     });
 });
