@@ -12,6 +12,7 @@ chrome.runtime.onConnect.addListener(function(port) {
     });
 });
 
+//Fired when a tab is updated.
 chrome.tabs.onUpdated.addListener(function(tabId, changeInfo) {
     console.info("background listener: onUpdated");
     if (changeInfo.status === 'loading') {
@@ -23,16 +24,32 @@ chrome.tabs.onUpdated.addListener(function(tabId, changeInfo) {
     }
 });
 
+//Fires when the active tab in a window changes
+chrome.tabs.onActivated.addListener(function(activeInfo) {
+    console.info("background listener: onActivated");
+    chrome.tabs.get(activeInfo.tabId, function(tab){
+        var domainPart = extractDomain(tab.url);
+        chrome.storage.sync.get(domainPart, function (val) {
+            if (val[domainPart]) {
+                updateBadge(val[domainPart]);
+            } else {
+                // when plugin is installed and switched to pre-opened tab.
+                saveCountInStorage(val, domainPart);
+            }
+        });
+    });
+});
+
 function updateViewCount(url) {
     var domainPart = extractDomain(url);
     chrome.storage.sync.get(domainPart, function (val) {
-        val[domainPart] = val[domainPart] || 0;
-        val[domainPart]++;
         saveCountInStorage(val, domainPart);
     });
 }
 
 function saveCountInStorage(val, domainPart) {
+    val[domainPart] = val[domainPart] || 0;
+    val[domainPart]++;
     chrome.storage.sync.set(val, function() {
         updateBadge(val[domainPart]);
     });
@@ -43,22 +60,6 @@ function updateBadge(count) {
     ba.setBadgeBackgroundColor({color: "#0091ea"});
     ba.setBadgeText({text: "" + count});
 }
-
-chrome.tabs.onActivated.addListener(function(activeInfo) {
-    console.info("background listener: onActivated");
-    chrome.tabs.get(activeInfo.tabId, function(tab){
-        var domainPart = extractDomain(tab.url);
-        chrome.storage.sync.get(domainPart, function (val) {
-            if (val[domainPart]) {
-                updateBadge(val[domainPart]);
-            } else {
-                // when plugin is installed and switched to pre-opened tab.
-                val[domainPart] = 1;
-                saveCountInStorage(val, domainPart);
-            }
-        });
-    });
-});
 
 function extractDomain(url) {
     var domain;
